@@ -1,0 +1,30 @@
+name: Build Sports Consistency
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"   # every 6 hours
+  workflow_dispatch: {}      # allow manual run
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # allow committing the /data output
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install (no deps needed)
+        run: echo "nothing to install"
+
+      - name: Build JSON
+        run: npm run build
+
+      - name: Commit data
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore(data): update sports consistency JSON"
+          file_pattern: data/consistency.json
