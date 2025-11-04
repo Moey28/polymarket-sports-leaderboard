@@ -1,0 +1,9 @@
+{
+  "name": "polymarket-sports-leaderboard",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build": "node compute_consistency.js"
+  }
+}
