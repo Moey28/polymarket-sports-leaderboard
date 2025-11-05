@@ -1,4 +1,5 @@
-query ($first: Int!, $skip: Int!, $fromTs: Int!, $toTs: Int!) {
+# NOTE: timestamps are BigInt in many subgraphs
+query ($first: Int!, $skip: Int!, $fromTs: BigInt!, $toTs: BigInt!) {
   filledEvents(
     first: $first
     skip: $skip
@@ -11,8 +12,9 @@ query ($first: Int!, $skip: Int!, $fromTs: Int!, $toTs: Int!) {
     txHash
     amount
     price
-    market
+    outcome
     maker
     taker
+    market
   }
 }
