@@ -1,0 +1,13 @@
+query ($first: Int!, $skip: Int!) {
+  markets(
+    first: $first
+    skip: $skip
+    orderBy: createdAt
+    orderDirection: asc
+  ) {
+    id
+    question
+    createdAt
+    slug
+  }
+}
