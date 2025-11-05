@@ -1,0 +1,18 @@
+query ($first: Int!, $skip: Int!, $fromTs: Int!, $toTs: Int!) {
+  filledEvents(
+    first: $first
+    skip: $skip
+    orderBy: timestamp
+    orderDirection: asc
+    where: { timestamp_gte: $fromTs, timestamp_lte: $toTs }
+  ) {
+    id
+    timestamp
+    txHash
+    amount
+    price
+    market
+    maker
+    taker
+  }
+}
