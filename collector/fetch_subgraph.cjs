@@ -1,4 +1,3 @@
-// CommonJS; works on Node 20 (global fetch) without extra deps
 const fs = require("fs");
 const path = require("path");
 
@@ -13,12 +12,12 @@ function parseArgs() {
     else if (a === "--page") out.page = parseInt(args[++i], 10);
     else if (a === "--var") {
       const [k, v] = args[++i].split("=");
+      // keep numbers as Numbers, but don't force—GraphQL BigInt accepts numeric JSON
       out.vars[k] = /^\d+$/.test(v) ? Number(v) : v;
     }
   }
-  if (!out.subgraphId || !out.queryFile || !out.outFile) {
+  if (!out.subgraphId || !out.queryFile || !out.outFile)
     throw new Error("Missing: --subgraph-id --query-file --out");
-  }
   if (!out.page) out.page = 1000;
   return out;
 }
@@ -29,14 +28,13 @@ async function main() {
   if (!apiKey) throw new Error("GRAPH_API_KEY env is required");
 
   const endpoint = `https://gateway.thegraph.com/api/${apiKey}/subgraphs/id/${subgraphId}`;
-  const queryPath = path.resolve(queryFile); // repo-relative path
-  const query = fs.readFileSync(queryPath, "utf8");
+  const query = fs.readFileSync(path.resolve(queryFile), "utf8");
 
-  const outPath = path.resolve(outFile);
-  fs.mkdirSync(path.dirname(outPath), { recursive: true });
-  const out = fs.createWriteStream(outPath, { flags: "w" });
+  fs.mkdirSync(path.dirname(path.resolve(outFile)), { recursive: true });
+  const out = fs.createWriteStream(path.resolve(outFile), { flags: "w" });
 
-  let skip = 0, total = 0;
+  let skip = 0;
+  let total = 0;
   const first = page;
 
   async function fetchPage() {
@@ -46,17 +44,13 @@ async function main() {
       headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
-    if (!res.ok) {
-      const txt = await res.text();
-      throw new Error(`HTTP ${res.status}: ${txt}`);
-    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}: ${await res.text()}`);
     const json = await res.json();
-    if (json.errors?.length) {
+    if (json.errors?.length)
       throw new Error(`GraphQL error: ${JSON.stringify(json.errors)}`);
-    }
     const data = json.data || {};
     const key = Object.keys(data)[0];
-    return key ? (data[key] || []) : [];
+    return key ? data[key] || [] : [];
   }
 
   while (true) {
@@ -64,11 +58,10 @@ async function main() {
     if (!rows.length) break;
     for (const r of rows) out.write(JSON.stringify(r) + "\n");
     total += rows.length;
-    skip  += rows.length;
+    skip += rows.length;
     process.stdout.write(`\rFetched: ${total}`);
     if (rows.length < first) break;
   }
-
   out.end();
   process.stdout.write(`\nDone. Wrote ${total} rows to ${outFile}\n`);
 }
