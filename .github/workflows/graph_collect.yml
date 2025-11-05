@@ -46,6 +46,11 @@ jobs:
         with:
           node-version: "20"
 
+      - name: Install deps
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install node-fetch@3 graphql-request
+
       - name: Determine time window
         id: window
         shell: bash
@@ -70,7 +75,7 @@ jobs:
         env:
           GRAPH_API_KEY: ${{ secrets.GRAPH_API_KEY }}
         run: |
-          node collector/fetch_subgraph.js \
+          node collector/fetch_subgraph.cjs \
             --subgraph-id "${{ matrix.target.id }}" \
             --query-file "${{ matrix.target.query }}" \
             --out "${{ matrix.target.outfile }}" \
