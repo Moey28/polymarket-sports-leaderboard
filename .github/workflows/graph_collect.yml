@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       fromTs:
-        description: "From timestamp (unix seconds). Leave blank for 0."
+        description: "From unix seconds (leave blank to auto: now-86400)"
         required: false
-        default: "0"
+        default: ""
       toTs:
-        description: "To timestamp (unix seconds). Leave blank for year 3000."
+        description: "To unix seconds (leave blank to auto: now)"
         required: false
-        default: "32503680000"
+        default: ""
   schedule:
     - cron: "0 * * * *"   # hourly
 
@@ -25,14 +25,12 @@ jobs:
     permissions:
       contents: read
 
+    # For now we only collect fills. We'll add markets back after we map
+    # the exact fields for that subgraph.
     strategy:
       fail-fast: false
       matrix:
         target:
-          - name: polymarket-markets
-            id: 81Dm16JjuFSrqz813HysXoUPvzTwE7fsfPk2RTf66nyC
-            query: queries/markets.graphql
-            outfile: data/markets.jsonl
           - name: polymarket-fills
             id: EZCTgSzLPuBSqQcuR3ifeiKHKBnpjHSNbYpty8Mnjm9D
             query: queries/fills.graphql
@@ -46,25 +44,21 @@ jobs:
         with:
           node-version: "20"
 
-      # (Optional) These deps aren't required for Node 20 + CJS collector,
-      # but harmless to keep if you want a package.json.
-      - name: Install deps
-        run: |
-          npm init -y >/dev/null 2>&1 || true
-          npm install node-fetch@3 graphql-request
-
       - name: Determine time window
         id: window
         shell: bash
         run: |
+          # For cron: last 60 minutes
           if [[ "${{ github.event_name }}" == "schedule" ]]; then
             TO_TS=$(date +%s)
-            FROM_TS=$((TO_TS - 3600))   # last 60 minutes
+            FROM_TS=$((TO_TS - 3600))
           else
+            # For manual runs, default to last 24h if left blank
+            NOW=$(date +%s)
             FROM_TS="${{ github.event.inputs.fromTs }}"
             TO_TS="${{ github.event.inputs.toTs }}"
-            [[ -z "$FROM_TS" ]] && FROM_TS=0
-            [[ -z "$TO_TS"   ]] && TO_TS=32503680000
+            [[ -z "$TO_TS"   ]] && TO_TS="$NOW"
+            [[ -z "$FROM_TS" ]] && FROM_TS=$((TO_TS - 86400))
           fi
           echo "fromTs=$FROM_TS" >> $GITHUB_OUTPUT
           echo "toTs=$TO_TS"     >> $GITHUB_OUTPUT
@@ -73,12 +67,11 @@ jobs:
       - name: Ensure output folder
         run: mkdir -p data
 
-      # Guard rail so path/secret problems fail early and clearly
+      # Guard rails
       - name: Verify collector and queries exist
         run: |
           test -f collector/fetch_subgraph.cjs || { echo "Missing collector/fetch_subgraph.cjs"; exit 1; }
           test -f queries/fills.graphql        || { echo "Missing queries/fills.graphql"; exit 1; }
-          test -f queries/markets.graphql      || { echo "Missing queries/markets.graphql"; exit 1; }
 
       - name: Run collector
         env:
