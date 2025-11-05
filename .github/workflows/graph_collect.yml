@@ -46,6 +46,8 @@ jobs:
         with:
           node-version: "20"
 
+      # (Optional) These deps aren't required for Node 20 + CJS collector,
+      # but harmless to keep if you want a package.json.
       - name: Install deps
         run: |
           npm init -y >/dev/null 2>&1 || true
@@ -70,6 +72,13 @@ jobs:
 
       - name: Ensure output folder
         run: mkdir -p data
+
+      # Guard rail so path/secret problems fail early and clearly
+      - name: Verify collector and queries exist
+        run: |
+          test -f collector/fetch_subgraph.cjs || { echo "Missing collector/fetch_subgraph.cjs"; exit 1; }
+          test -f queries/fills.graphql        || { echo "Missing queries/fills.graphql"; exit 1; }
+          test -f queries/markets.graphql      || { echo "Missing queries/markets.graphql"; exit 1; }
 
       - name: Run collector
         env:
