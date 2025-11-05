@@ -1,0 +1,87 @@
+name: Collect from The Graph
+
+on:
+  workflow_dispatch:
+    inputs:
+      fromTs:
+        description: "From timestamp (unix seconds). Leave blank for 0."
+        required: false
+        default: "0"
+      toTs:
+        description: "To timestamp (unix seconds). Leave blank for year 3000."
+        required: false
+        default: "32503680000"
+  schedule:
+    - cron: "0 * * * *"   # hourly
+
+concurrency:
+  group: graph-collect-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - name: polymarket-markets
+            id: 81Dm16JjuFSrqz813HysXoUPvzTwE7fsfPk2RTf66nyC
+            query: queries/markets.graphql
+            outfile: data/markets.jsonl
+          - name: polymarket-fills
+            id: EZCTgSzLPuBSqQcuR3ifeiKHKBnpjHSNbYpty8Mnjm9D
+            query: queries/fills.graphql
+            outfile: data/fills.jsonl
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Determine time window
+        id: window
+        shell: bash
+        run: |
+          if [[ "${{ github.event_name }}" == "schedule" ]]; then
+            TO_TS=$(date +%s)
+            FROM_TS=$((TO_TS - 3600))   # last 60 minutes
+          else
+            FROM_TS="${{ github.event.inputs.fromTs }}"
+            TO_TS="${{ github.event.inputs.toTs }}"
+            [[ -z "$FROM_TS" ]] && FROM_TS=0
+            [[ -z "$TO_TS"   ]] && TO_TS=32503680000
+          fi
+          echo "fromTs=$FROM_TS" >> $GITHUB_OUTPUT
+          echo "toTs=$TO_TS"     >> $GITHUB_OUTPUT
+          echo "Using window: $FROM_TS -> $TO_TS"
+
+      - name: Ensure output folder
+        run: mkdir -p data
+
+      - name: Run collector
+        env:
+          GRAPH_API_KEY: ${{ secrets.GRAPH_API_KEY }}
+        run: |
+          node collector/fetch_subgraph.js \
+            --subgraph-id "${{ matrix.target.id }}" \
+            --query-file "${{ matrix.target.query }}" \
+            --out "${{ matrix.target.outfile }}" \
+            --page 1000 \
+            --var fromTs="${{ steps.window.outputs.fromTs }}" \
+            --var toTs="${{ steps.window.outputs.toTs }}"
+
+      - name: Upload data as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: graph-dump-${{ matrix.target.name }}
+          path: ${{ matrix.target.outfile }}
+          if-no-files-found: error
+          retention-days: 7
