@@ -1,5 +1,5 @@
 query ($first: Int!, $skip: Int!, $fromTs: BigInt!, $toTs: BigInt!) {
-  fills(
+  orderFilleds(
     first: $first
     skip: $skip
     orderBy: timestamp
