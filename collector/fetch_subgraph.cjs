@@ -93,10 +93,13 @@ async function main() {
     }
     total += rows.length;
     skip += rows.length;
+        if (skip >= 5000) break;
+    
 
     process.stdout.write(`\rFetched: ${total}`);
     if (rows.length < first) break; // last page
-  }
+        
+  
 
   out.end();
   process.stdout.write(`\nDone. Wrote ${total} rows to ${outFile}\n`);
