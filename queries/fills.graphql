@@ -2,18 +2,7 @@ query ($first: Int!, $skip: Int!, $fromTs: BigInt!, $toTs: BigInt!) {
   orderFilleds(
     first: $first
     skip: $skip
-    orderBy: timestamp
-    orderDirection: asc
-    where: { timestamp_gte: $fromTs, timestamp_lte: $toTs }
   ) {
     id
-    timestamp
-    txHash
-    amount
-    price
-    maker
-    taker
-    market
-    outcome
   }
 }
