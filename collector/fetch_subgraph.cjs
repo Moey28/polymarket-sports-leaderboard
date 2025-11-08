@@ -131,6 +131,9 @@ async function main() {
     total += rows.length;
     skip += rows.length;
 
+        // The Graph enforces a skip limit of 5000; abort to avoid errors
+    if (skip >= 5000) break;
+    
     // Honour a user‑supplied maximum row count.  When `max` is set
     // and we have collected at least that many rows, exit early.
     if (typeof max === 'number' && total >= max) break;
